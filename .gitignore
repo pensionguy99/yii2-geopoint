@@ -1,0 +1,25 @@
+# phpstorm project files
+.idea
+
+# netbeans project files
+nbproject
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# composer vendor dir
+/vendor
+
+# composer itself is not needed
+composer.phar
+
+# node vendor dir
+/node_modules
+
+# log files
+*\.log
+
+# backup files
+/**/*\.bak
