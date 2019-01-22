@@ -1,6 +1,8 @@
 Yii2-geopoint
 ============
 
+Fork and modification for the original module [yii2-geopoint](https://github.com/reza-id/yii2-geopoint) by [reza-id](https://github.com/reza-id)
+
 ActiveRecord inspired by [yii2-spatial](https://github.com/sjaakp/yii2-spatial) but made simpler only to use specific spatial datatype: POINT.  
 Transform the internal [MySQL format](https://dev.mysql.com/doc/refman/5.5/en/spatial-datatypes.html) to simple coordinate text after finding, and vice versa before storing.
 

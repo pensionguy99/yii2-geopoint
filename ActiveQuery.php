@@ -5,14 +5,22 @@ namespace rezaid\geopoint;
 use yii\db\ActiveQuery as YiiActiveQuery;
 use yii\db\Exception;
 
-class ActiveQuery extends YiiActiveQuery {
+class ActiveQuery extends YiiActiveQuery
+{
 
-    public function nearest($from, $attribute, $radius = 100, $unit='km')    {
+    protected $_skipPrep = false;
+
+    public function nearest($from, $attribute, $radius = 100, $unit = 'km')
+    {
         $lenPerDegree = 111.045;    // km per degree latitude; for miles, use 69.0
-        if ($unit=='mil') $lenPerDegree = 69.0;
+        if ($unit == 'mil') {
+            $lenPerDegree = 69.0;
+        }
 
         $from = explode(',', $from);
-        if (! is_array($from)) return $this;
+        if (!is_array($from)) {
+            return $this;
+        }
 
         $lat = trim($from[0]);
         $lng = trim($from[1]);
@@ -22,18 +30,26 @@ class ActiveQuery extends YiiActiveQuery {
 
         if ($modelCls::getDb()->driverName === 'mysql') {
             $subQuery = $this->create($this)->from($modelCls::tableName())
-                ->select([$modelCls::tableName().'.*', '_d' => "($lenPerDegree * ST_Distance($attribute, ST_PointFromText(:point)))"])
+                ->select([
+                    $modelCls::tableName() . '.*',
+                    '_d' => "($lenPerDegree * ST_Distance($attribute, ST_PointFromText(:point)))"
+                ])
                 ->params([':point' => "POINT($lat $lng)"]);
-        } else if ($modelCls::getDb()->driverName === 'pgsql') {
-            $subQuery = $this->create($this)->from($modelCls::tableName())
-                ->select([$modelCls::tableName().'.*', '_d' => "($lenPerDegree * ($attribute <-> POINT(:lt,:lg)))"])
-                ->params([':lg' => $lng, ':lt' => $lat]);
         } else {
-			throw new Exception('Only MqSQL and PostgreSQL are supported by ' . self::className());
-		}
+            if ($modelCls::getDb()->driverName === 'pgsql') {
+                $subQuery = $this->create($this)->from($modelCls::tableName())
+                    ->select([
+                        $modelCls::tableName() . '.*',
+                        '_d' => "($lenPerDegree * ($attribute <-> POINT(:lt,:lg)))"
+                    ])
+                    ->params([':lg' => $lng, ':lt' => $lat]);
+            } else {
+                throw new Exception('Only MqSQL and PostgreSQL are supported by ' . self::className());
+            }
+        }
 
         $this->from(['distance' => $subQuery])
-            ->andWhere([ '<', '_d', $radius ])
+            ->andWhere(['<', '_d', $radius])
             ->orderBy([
                 '_d' => SORT_ASC
             ]);
@@ -48,32 +64,24 @@ class ActiveQuery extends YiiActiveQuery {
         return $this;
     }
 
-    protected $_skipPrep = false;
-
-    protected function queryScalar($selectExpression, $db)  {
-        $this->_skipPrep = true;
-        $r = parent::queryScalar($selectExpression, $db);
-        $this->_skipPrep = false;
-        return $r;
-    }
-
-    public function prepare($builder)    {        
+    public function prepare($builder)
+    {
         /** @var ActiveRecord $modelClass */
         $modelClass = $this->modelClass;
-        if ($modelClass::getDb()->driverName === 'pgsql') return parent::prepare($builder);
+        if ($modelClass::getDb()->driverName === 'pgsql') {
+            return parent::prepare($builder);
+        }
 
-        if (! $this->_skipPrep) {   // skip in case of queryScalar; it's not needed, and we get an SQL error (duplicate column names)
-            if (empty($this->select))   {
-                $this->select($modelClass::tableName().'.*');
+        if (!$this->_skipPrep) {   // skip in case of queryScalar; it's not needed, and we get an SQL error (duplicate column names)
+            if (empty($this->select)) {
+                $this->select($modelClass::tableName() . '.*');
                 $this->allColumns();
-            }
-            else   {
+            } else {
                 $schema = $modelClass::getTableSchema();
                 foreach ($this->select as $field) {
-                    if ($field == '*')  {
+                    if ($field == '*') {
                         $this->allColumns();
-                    }
-                    else {
+                    } elseif (is_scalar($field)) {
                         $column = $schema->getColumn($field);
                         if (ActiveRecord::isPoint($column)) {
                             $this->addSelect(["ST_AsText($field) AS $field"]);
@@ -82,18 +90,30 @@ class ActiveQuery extends YiiActiveQuery {
                 }
             }
         }
+
         return parent::prepare($builder);
     }
 
-    protected function allColumns() {
+    protected function allColumns()
+    {
         /** @var ActiveRecord $modelClass */
         $modelClass = $this->modelClass;
         $schema = $modelClass::getTableSchema();
-        foreach ($schema->columns as $column)   {
+
+        foreach ($schema->columns as $column) {
             if (ActiveRecord::isPoint($column)) {
                 $field = $column->name;
                 $this->addSelect(["ST_AsText($field) AS $field"]);
             }
         }
+    }
+
+    protected function queryScalar($selectExpression, $db)
+    {
+        $this->_skipPrep = true;
+        $r = parent::queryScalar($selectExpression, $db);
+        $this->_skipPrep = false;
+
+        return $r;
     }
 }
