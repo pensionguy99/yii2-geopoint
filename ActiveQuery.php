@@ -79,7 +79,7 @@ class ActiveQuery extends YiiActiveQuery
             } else {
                 $schema = $modelClass::getTableSchema();
                 foreach ($this->select as $field) {
-                    if ($field == '*') {
+                    if (preg_match('/\*/', $field)) {
                         $this->allColumns();
                     } elseif (is_scalar($field)) {
                         $column = $schema->getColumn($field);
