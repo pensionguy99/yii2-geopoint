@@ -3,6 +3,7 @@
 namespace rezaid\geopoint;
 
 use yii\db\ActiveQuery as YiiActiveQuery;
+use yii\db\Query;
 use yii\db\Exception;
 
 class ActiveQuery extends YiiActiveQuery
@@ -39,14 +40,14 @@ class ActiveQuery extends YiiActiveQuery
 
         if ($modelCls::getDb()->driverName === 'mysql') {
             $subQuery = $this->create($this)
-                ->select([
+                ->addSelect([
                     '_d' => "($lenPerDegree * ST_Distance($attribute, ST_PointFromText(:point)))"
                 ])
                 ->params([':point' => "POINT($lat $lng)"]);
         } else {
             if ($modelCls::getDb()->driverName === 'pgsql') {
                 $subQuery = $this->create($this)
-                    ->select([
+                    ->addSelect([
                         '_d' => "($lenPerDegree * ($attribute <-> POINT(:lt,:lg)))"
                     ])
                     ->params([':lg' => $lng, ':lt' => $lat]);
@@ -89,7 +90,7 @@ class ActiveQuery extends YiiActiveQuery
                 foreach ($this->select as $field) {
                     if (preg_match('/\*/', $field)) {
                         $this->allColumns();
-                    } elseif (is_scalar($field)) {
+                    } elseif ($field instanceof Query == false) {
                         $column = $schema->getColumn($field);
                         if (ActiveRecord::isPoint($column)) {
                             $this->addSelect(["ST_AsText($field) AS $field"]);
