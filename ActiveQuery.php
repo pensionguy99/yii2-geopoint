@@ -10,6 +10,15 @@ class ActiveQuery extends YiiActiveQuery
 
     protected $_skipPrep = false;
 
+    /**
+     * Finds nearest models by provided current location point and radius.
+     *
+     * @param $from
+     * @param $attribute
+     * @param int $radius
+     * @param string $unit
+     * @return $this
+     */
     public function nearest($from, $attribute, $radius = 100, $unit = 'km')
     {
         $lenPerDegree = 111.045;    // km per degree latitude; for miles, use 69.0
@@ -29,17 +38,15 @@ class ActiveQuery extends YiiActiveQuery
         $modelCls = $this->modelClass;
 
         if ($modelCls::getDb()->driverName === 'mysql') {
-            $subQuery = $this->create($this)->from($modelCls::tableName())
+            $subQuery = $this->create($this)
                 ->select([
-                    $modelCls::tableName() . '.*',
                     '_d' => "($lenPerDegree * ST_Distance($attribute, ST_PointFromText(:point)))"
                 ])
                 ->params([':point' => "POINT($lat $lng)"]);
         } else {
             if ($modelCls::getDb()->driverName === 'pgsql') {
-                $subQuery = $this->create($this)->from($modelCls::tableName())
+                $subQuery = $this->create($this)
                     ->select([
-                        $modelCls::tableName() . '.*',
                         '_d' => "($lenPerDegree * ($attribute <-> POINT(:lt,:lg)))"
                     ])
                     ->params([':lg' => $lng, ':lt' => $lat]);
@@ -48,8 +55,9 @@ class ActiveQuery extends YiiActiveQuery
             }
         }
 
-        $this->from(['distance' => $subQuery])
-            ->andWhere(['<', '_d', $radius])
+        $this->select(['*'])
+            ->from(['distance' => $subQuery])
+            ->where(['<', '_d', $radius])
             ->orderBy([
                 '_d' => SORT_ASC
             ]);
