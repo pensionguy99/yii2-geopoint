@@ -83,7 +83,8 @@ class ActiveQuery extends YiiActiveQuery
 
         if (!$this->_skipPrep) {   // skip in case of queryScalar; it's not needed, and we get an SQL error (duplicate column names)
             if (empty($this->select)) {
-                $this->select($modelClass::tableName() . '.*');
+                list(, $alias) = $this->getTableNameAndAlias();
+                $this->select = ["$alias.*"];
                 $this->allColumns();
             } else {
                 $schema = $modelClass::getTableSchema();
@@ -124,5 +125,34 @@ class ActiveQuery extends YiiActiveQuery
         $this->_skipPrep = false;
 
         return $r;
+    }
+
+    /**
+     * Returns the table name and the table alias for [[modelClass]]. This method is duplicate of parent method with the
+     * same name.
+     *
+     * @return array the table name and the table alias.
+     */
+    private function getTableNameAndAlias()
+    {
+        if (empty($this->from)) {
+            $tableName = $this->getPrimaryTableName();
+        } else {
+            $tableName = '';
+            foreach ($this->from as $alias => $tableName) {
+                if (is_string($alias)) {
+                    return [$tableName, $alias];
+                }
+                break;
+            }
+        }
+
+        if (preg_match('/^(.*?)\s+({{\w+}}|\w+)$/', $tableName, $matches)) {
+            $alias = $matches[2];
+        } else {
+            $alias = $tableName;
+        }
+
+        return [$tableName, $alias];
     }
 }
