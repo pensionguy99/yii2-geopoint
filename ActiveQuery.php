@@ -3,6 +3,7 @@
 namespace rezaid\geopoint;
 
 use yii\db\ActiveQuery as YiiActiveQuery;
+use yii\db\Expression;
 use yii\db\Query;
 use yii\db\Exception;
 
@@ -91,7 +92,10 @@ class ActiveQuery extends YiiActiveQuery
                 foreach ($this->select as $field) {
                     if (preg_match('/\*/', $field)) {
                         $this->allColumns();
-                    } elseif ($field instanceof Query == false) {
+                    } elseif (
+                        $field instanceof Query == false &&
+                        $field instanceof Expression == false
+                    ) {
                         $column = $schema->getColumn($field);
                         if (ActiveRecord::isPoint($column)) {
                             $this->addSelect(["ST_AsText($field) AS $field"]);
